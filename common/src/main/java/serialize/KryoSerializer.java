@@ -27,12 +27,13 @@ public class KryoSerializer implements Serializer {
         Kryo kryo = new Kryo();
         kryo.register(RpcRequest.class);
         kryo.register(RpcResponse.class);
-        kryo.setReferences(true);//是否关闭注册行为，默认为打开，关闭后会有序列化问题
         /*
+         * 是否关闭注册行为，默认为打开，关闭后会有序列化问题
          * 这会赋予该 Class 一个从 0 开始的编号，但 Kryo 使用注册行为最大的问题在于，
          * 其不保证同一个 Class 每一次注册的号码相同，这与注册的顺序有关，也就意味着在不同的机器、
          * 同一个机器重启前后都有可能拥有不同的编号，这会导致序列化产生问题，所以在分布式项目中，一般关闭注册行为。
          * */
+        kryo.setReferences(true);
         kryo.setRegistrationRequired(false);//是否关闭循环引用，关闭可以提高性能，但是一般设置为false
         return kryo;
     });
@@ -48,6 +49,7 @@ public class KryoSerializer implements Serializer {
             kryoThreadLocal.remove();
             return output.toBytes();
         } catch (Exception e) {
+            log.error("序列化失败");
             e.printStackTrace();
         }
         return null;
@@ -63,6 +65,7 @@ public class KryoSerializer implements Serializer {
             kryoThreadLocal.remove();
             return clazz.cast(o);
         } catch (Exception e) {
+            log.error("反序列化失败");
             e.printStackTrace();
         }
         return null;

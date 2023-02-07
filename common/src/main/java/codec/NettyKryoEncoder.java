@@ -4,6 +4,9 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import serialize.Serializer;
 
 /**
@@ -14,15 +17,18 @@ import serialize.Serializer;
  * @Description: 自定义的编码器，将对象转换为字节流，使用ByteBuf当作容器
  */
 @AllArgsConstructor
+@Slf4j
 public class NettyKryoEncoder extends MessageToByteEncoder<Object> {
     private final Serializer serializer;
     private final Class<?> genericClass;
+    private static final Logger logger = LoggerFactory.getLogger(NettyKryoEncoder.class);
 
     /*
      * 将对象转换为字节码然后写入到ByteBuf中
      * */
     @Override
     protected void encode(ChannelHandlerContext channelHandlerContext, Object o, ByteBuf byteBuf) throws Exception {
+        logger.info("调用编码器");
         //检查是否有此Class对应的对象实例
         if (genericClass.isInstance(o)) {
             //将对象序列化为byte
@@ -35,6 +41,4 @@ public class NettyKryoEncoder extends MessageToByteEncoder<Object> {
             byteBuf.writeBytes(body);
         }
     }
-
-
 }

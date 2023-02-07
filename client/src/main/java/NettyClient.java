@@ -1,15 +1,18 @@
+import codec.NettyKryoDecoder;
+import codec.NettyKryoEncoder;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
+import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.util.AttributeKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import serialize.KryoSerializer;
+import utils.RpcRequest;
+import utils.RpcResponse;
 
 /**
  * @Projectname: rpc
@@ -40,7 +43,7 @@ public class NettyClient {
         EventLoopGroup eventLoopGroup = new NioEventLoopGroup();
         b = new Bootstrap();
         //Netty使用的是kryo序列化协议
-        KryoSerializer kryoSerializer new KryoSerializer();
+        KryoSerializer kryoSerializer = new KryoSerializer();
 
         b.group(eventLoopGroup)
                 .channel(NioSocketChannel.class)
@@ -54,8 +57,62 @@ public class NettyClient {
                         /*
                          * 自定义序列化编解码器
                          * */
-                        ch.pipeline().addLast(new Nett)
+                        //将数据序列化为字节
+                        ch.pipeline().addLast(new NettyKryoDecoder(kryoSerializer, RpcResponse.class));
+                        //将字节反序列化为对象
+                        ch.pipeline().addLast(new NettyKryoEncoder(kryoSerializer, RpcResponse.class));
+                        ch.pipeline().addLast(new NettyClientHandler());
+
                     }
-                })
+                });
+    }
+
+    /*
+     * 发送消息到服务端
+     * @param 消息体
+     * @return 服务端返回数据
+     * */
+
+    public RpcResponse sendMessage(RpcRequest request) {
+        try {
+            ChannelFuture channelFuture = b.connect(host, port).sync();
+            logger.info("客户端连接成功{}", host + ":" + port);
+            Channel futureChannel = channelFuture.channel();
+            logger.info("发送消息");
+            if (futureChannel != null) {
+                futureChannel.writeAndFlush(request).addListener(future -> {
+                    if (future.isSuccess()) {
+                        logger.info("客户端发送消息：[{}]", request.toString());
+                    } else {
+                        logger.error("客户端消息发送失败");
+                    }
+                });
+                //阻塞等待，知道Channel关闭
+                futureChannel.closeFuture().sync();
+                //将服务端返回的数据取出
+                AttributeKey<RpcResponse> key = AttributeKey.valueOf("rpcResponse");
+                return futureChannel.attr(key).get();
+            }
+        } catch (Exception e) {
+            logger.error("客户端启动失败");
+        }
+        return null;
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        RpcRequest request = RpcRequest.builder()
+                .interfaceName("测试接口")
+                .methodName("测试方法").build();
+
+        NettyClient nettyClient = new NettyClient("127.0.0.1", 889);
+
+        for (int i = 0; i < 4; i++) {
+            RpcResponse response = nettyClient.sendMessage(request);
+            System.out.println(response.toString());
+            Thread.sleep(1000);
+        }
+        request.setMethodName("最后一次");
+        RpcResponse response = nettyClient.sendMessage(request);
+        System.out.println(response.toString());
     }
 }
