@@ -60,6 +60,18 @@
             <artifactId>kryo</artifactId>
             <version>4.0.0</version>
         </dependency>
+        <!--CuratorFramework-->
+        <dependency>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-framework</artifactId>
+            <version>5.4.0</version>
+        </dependency>
+        <!--CuratorRecipes-->
+        <dependency>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-recipes</artifactId>
+            <version>5.4.0</version>
+        </dependency>
 
 
     </dependencies>
